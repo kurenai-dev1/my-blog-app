@@ -1,0 +1,178 @@
+:root {
+  /* 🎨 カラーパレット（強力な変数はそのままキープ！） */
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  /* 🔤 フォント定義 */
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  /* 📐 テキスト基本設定 */
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.02em; /* ⭕ ガタつきのない自然な横幅に調整 */
+  color: var(--text);
+  background: var(--bg);
+  
+  /* ✨ 高品位な文字レンダリング（絶対残す！） */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px; /* スマホで文字を適切に小さく */
+  }
+}
+
+/* 🌙 自動ダークモード（宝物なので完全キープ！） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #c084fc;
+    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  }
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+}
+
+/* 🧱 全体枠（邪魔な固定幅と中央揃えを撤去し、現代的なフルスクリーンに） */
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 👑 見出しルールを「ブログ用」に完全に調教 */
+h1, h2, h3 {
+  font-family: var(--sans);
+  color: var(--text-h);
+  font-weight: 700;
+  letter-spacing: normal; /* ❌ マイナス文字間隔の呪いを解除 */
+}
+
+h1 { font-size: 32px; margin: 32px 0 16px; }
+h2 { font-size: 24px; margin: 24px 0 12px; }
+
+p { margin: 0 0 16px 0; }
+
+/* 💻 コードブロック（Qiitaっぽい装飾にそのまま使えて有用！） */
+code {
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 3px 6px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  border-radius: 4px;
+}
+
+/* 📄 frontend/src/index.css の最下部（上書き） */
+
+.md-viewer {
+  letter-spacing: normal;
+  color: var(--text);
+
+  /* ==========================================
+     👑 h1 見出し（大見出し）
+     ========================================== */
+  h1 {
+    font-size: var(--md-h1-size, 24px);
+    font-weight: 700;
+    color: var(--text-h);
+    line-height: 1.4;
+    
+    margin: 32px 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border); /* ⭕ 下にセパレータを表示 */
+
+    /* ⭕ 境界の調整：h1の直後にまたh1が連続、または要素が並ぶ境界のルール */
+    /* ※ 最初の要素（:first-child）の時は上マージンを完全に消す */
+    &:first-child {
+      margin-top: 0;
+    }
+    /* ※ 前に別の要素（文章やh2など）があって、h1が新しく始まる境界（かつ最初ではない） */
+    &:not(:first-child) {
+      margin-top: 56px; 
+    }
+  }
+
+  /* ==========================================
+     🥈 h2 見出し（中見出し）
+     ========================================== */
+  h2 {
+    font-size: var(--md-h2-size, 20px);
+    font-weight: 700;
+    color: var(--text-h);
+    line-height: 1.4;
+    
+    margin: 24px 0 12px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border); /* ⭕ 下にセパレータを表示 */
+
+    /* ⭕ h1と同様に、最初の要素なら上マージンゼロ、途中の境界なら56px */
+    &:first-child {
+      margin-top: 0;
+    }
+    &:not(:first-child) {
+      margin-top: 56px;
+    }
+  }
+
+  /* ==========================================
+     🥉 h3 見出し（小見出し・下線なし）
+     ========================================== */
+  h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-h);
+    line-height: 1.4;
+    margin: 24px 0 8px 0;
+
+    &:first-child { margin-top: 0; }
+  }
+
+  /* ==========================================
+     🏅 h4 見出し（細見出し・下線なし）
+     ========================================== */
+  h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-h);
+    line-height: 1.4;
+    margin: 16px 0 8px 0;
+
+    &:first-child { margin-top: 0; }
+  }
+
+  /* ==========================================
+     📝 本文（段落）
+     ========================================== */
+  p {
+    font-size: 16px;
+    line-height: 1.8;
+    margin: 0 0 16px 0;
+    
+    /* もし記事の一番最初が「h1」ではなく「p（文章）」から始まる場合も、余計な上マージンを生まない */
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  /* リストなど */
+  ul, ol {
+    padding-left: 20px;
+    margin: 12px 0;
+    li { margin-bottom: 6px; line-height: 1.7; }
+  }
+}
