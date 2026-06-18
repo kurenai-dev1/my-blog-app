@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import MarkdownViewer from '../components/MarkdownViewer';
 
 // ⭕ 型定義に is_published を追加
 interface Post {
@@ -161,7 +161,7 @@ export default function EditPost() {
             <div style={styles.previewArea}>
               {/* ⭕ クラス名と共に、インラインのCSS変数スコープを完璧に適用！ */}
               <div className="md-viewer" style={previewMarkdownStyles}>
-                <ReactMarkdown>{content}</ReactMarkdown>
+                <MarkdownViewer content={content}/>
               </div>
             </div>
           )}

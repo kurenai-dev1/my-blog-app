@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import MarkdownViewer from '../components/MarkdownViewer';
 
 interface Post {
   id: number;
@@ -117,9 +117,7 @@ return (
         
         {/* Markdown本文 */}
         <div className="md-viewer">
-          <div style={styles.articleContent}>
-            <ReactMarkdown>{post.content}</ReactMarkdown>
-          </div>
+          <MarkdownViewer content={post.content}/>
         </div>
       </article>
 
@@ -204,8 +202,8 @@ const styles = {
   cardMeta: { fontSize: '14px', color: '#718096', marginBottom: '12px' },
   
   articleTitle: { 
-    fontSize: '32px', // 👈 縦に詰まらないよう、適切なサイズに調整
-    fontWeight: 800, 
+    fontSize: '28px', // 👈 縦に詰まらないよう、適切なサイズに調整
+    fontWeight: 700, 
     color: '#1a202c', 
     lineHeight: 1.4, // 👈 詰まり感をなくす自然な行高
     margin: '0' 

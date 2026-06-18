@@ -67,8 +67,8 @@ h2 { font-size: 24px; margin: 24px 0 12px; }
 
 p { margin: 0 0 16px 0; }
 
-/* 💻 コードブロック（Qiitaっぽい装飾にそのまま使えて有用！） */
-code {
+/* 💻 コードブロック（Qiitaっぽい装飾に）codehighlighterを使うなら邪魔  */
+code.nohighlighter {
   font-family: var(--mono);
   font-size: 14px;
   padding: 3px 6px;
@@ -175,4 +175,41 @@ code {
     margin: 12px 0;
     li { margin-bottom: 6px; line-height: 1.7; }
   }
+
+  /* ⭕ 【これを追加！】画像が記事の枠幅を超えてはみ出るのを絶対に防ぐ */
+  img {
+    max-width: 100%;  /* 枠の横幅いっぱいに自動縮小 */
+    height: auto;     /* 縦横比を崩さない */
+    display: block;   /* 下にできる謎の数ピクセルの隙間を消す */
+    margin: 24px auto; /* 縦に余白を入れつつ、画像自体を中央寄せにする */
+    border-radius: 6px; /* お好みで：画像のカドを少し丸くして柔らかい印象に */
+  }
+
+  /* ⭕ Markdown内のテーブルを美しく整える */
+  table {
+    width: max-content;   /* 中身の文字の長さに合わせて縮む */
+    max-width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 15px;
+  }
+
+  th, td {
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    text-align: left;
+    min-width: 20px;
+  }
+
+  /* ヘッダー背景を少し薄グレーにする */
+  th {
+    background-color: #f7fafc;
+    font-weight: 600;
+  }
+
+  /* 偶数行の背景を薄くして縞模様(ストライプ)にする（お好みで） */
+  tr:nth-child(even) {
+    background-color: #fcfdfd;
+  }
+
 }
