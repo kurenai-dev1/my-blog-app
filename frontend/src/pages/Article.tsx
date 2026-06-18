@@ -9,12 +9,27 @@ interface Post {
   title: string;
   content: string;
   created_at: string;
+  likes: number;
 }
 
 export default function Article() {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
+  const [likesCount, setLikesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasLiked, setHasLiked] = useState(false);
+
+  // 🔄 記事データを読み込んだタイミングで、すでにいいね済みの記事かチェック
+  useEffect(() => {
+    if (post) {
+      // localStorage から「liked_posts」という名前のリストを取得
+      const savedLikes = localStorage.getItem('liked_posts');
+      const likedPosts: number[] = savedLikes ? JSON.parse(savedLikes) : [];
+      
+      // この記事のIDがリストに含まれているか確認
+      setHasLiked(likedPosts.includes(post.id));
+    }
+  }, [post]);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -22,6 +37,7 @@ export default function Article() {
         const response = await fetch(`/api/blog/posts/${id}`);
         const data = await response.json();
         setPost(data);
+        setLikesCount(data.likes || 0);
       } catch (error) {
         console.error('記事の取得に失敗しました:', error);
       } finally {
@@ -33,6 +49,45 @@ export default function Article() {
 
   if (loading) return <div style={styles.loading}>Loading...</div>;
   if (!post) return <div style={styles.error}>記事が見つかりません。</div>;
+
+
+  // ❤️ いいね送信関数（重複排除ロジック入り）
+  const handleLike = async () => {
+    if (!post) return;
+
+    // ⭕ 既にいいねしている場合は、処理を中断して連打を防ぐ
+    if (hasLiked) {
+      alert('この記事にはすでにいいねしています！');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/blog/posts/${post.id}/like`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLikesCount(data.likes); // 最新のいいね数に更新
+
+        // ⭕ localStorage にこの記事のIDを追記する
+        const savedLikes = localStorage.getItem('liked_posts');
+        const likedPosts: number[] = savedLikes ? JSON.parse(savedLikes) : [];
+        
+        // リストになければ追加して保存
+        if (!likedPosts.includes(post.id)) {
+          likedPosts.push(post.id);
+          localStorage.setItem('liked_posts', JSON.stringify(likedPosts));
+        }
+
+        // 画面の状態を「いいね済み」に変更
+        setHasLiked(true);
+      }
+    } catch (error) {
+      console.error('いいねの送信に失敗しました', error);
+    }
+  };
+
 
 return (
   <div style={styles.wrapper}>
@@ -61,12 +116,30 @@ return (
         </header>
         
         {/* Markdown本文 */}
-<div className="md-viewer">
-        <div style={styles.articleContent}>
-          <ReactMarkdown>{post.content}</ReactMarkdown>
+        <div className="md-viewer">
+          <div style={styles.articleContent}>
+            <ReactMarkdown>{post.content}</ReactMarkdown>
+          </div>
         </div>
-</div>
       </article>
+
+      {/* ❤️ いいねエリア */}
+      <div style={styles.likeContainer}>
+        <button 
+          onClick={handleLike} 
+          style={{
+            ...styles.likeButton,
+            // ⭕ すでにいいねしている場合は、ボタンを少しグレーアウトして押しづらくする
+            ...(hasLiked ? styles.likedButtonActive : {})
+          }}
+          // ⭕ 既にいいねしている場合は、マウスでの押し込みアニメーションを無効化
+          onMouseDown={(e) => !hasLiked && (e.currentTarget.style.transform = 'scale(0.95)')}
+          onMouseUp={(e) => !hasLiked && (e.currentTarget.style.transform = 'scale(1)')}
+          disabled={hasLiked} // ボタン自体をクリック不可にしてもOK（お好みで）
+        >
+          {hasLiked ? '❤️ いいねしました！' : '❤️ いいね'} {likesCount}
+        </button>
+      </div>
 
       <footer style={styles.footerNav}>
          <p style={styles.footerText}>Thank you for reading!</p>
@@ -148,5 +221,32 @@ const styles = {
   footerNav: { marginTop: '40px', textAlign: 'center' as const },
   footerText: { fontSize: '14px', color: '#a0aec0' },
   loading: { textAlign: 'center' as const, marginTop: '150px', fontSize: '16px', color: '#718096' },
-  error: { textAlign: 'center' as const, marginTop: '150px', fontSize: '16px', color: '#e53e3e' }
+  error: { textAlign: 'center' as const, marginTop: '150px', fontSize: '16px', color: '#e53e3e' },
+
+likeContainer: { display: 'flex', justifyContent: 'center', marginTop: '40px', padding: '20px 0', borderTop: '1px solid #edf2f7' },
+  likeButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: '#fff',
+    border: '1px solid #e2e8f0',
+    padding: '10px 24px',
+    borderRadius: '9999px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: 600,
+    color: '#e53e3e',
+    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+    transition: 'all 0.2s ease'
+  },
+  // ⭕ いいねした後のボタンのデザイン（背景を薄ピンク、枠線を消すなど、Qiitaっぽく）
+  likedButtonActive: {
+    backgroundColor: '#fff5f5',
+    borderColor: '#feb2b2',
+    color: '#e53e3e',
+    cursor: 'not-allowed', // マウスカーソルを禁止マークに
+    boxShadow: 'none'
+  }
+
 };
+
