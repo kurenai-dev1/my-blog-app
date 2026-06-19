@@ -5,12 +5,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import MarkdownViewer from '../components/MarkdownViewer';
 
 // ⭕ 型定義に is_published を追加
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  is_published: boolean;
-}
+// interface Post {
+//  id: number;
+//  title: string;
+//  content: string;
+//  is_published: boolean;
+// }
 
 export default function EditPost() {
   const { id } = useParams<{ id: string }>();
@@ -209,7 +209,7 @@ const styles = {
   toolbar: { display: 'flex', alignItems: 'center', gap: '12px' },
   toolButton: { backgroundColor: '#fff', border: '1px solid #cbd5e0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#4a5568' },
   textarea: { minHeight: '450px', fontSize: '16px', lineHeight: '1.7', padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', outline: 'none', resize: 'vertical' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#2d3748' },
-  previewArea: { minHeight: '450px', backgroundColor: '#fff', padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '16px', lineHeight: '1.85', overflowY: 'auto' as const, color: '#2d3748', textAlign: 'left', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+  previewArea: { minHeight: '450px', backgroundColor: '#fff', padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '16px', lineHeight: '1.85', overflowY: 'auto' as const, color: '#2d3748', textAlign: 'left' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
   actions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   cancelButton: { border: 'none', background: 'none', color: '#e53e3e', fontSize: '14px', fontWeight: 600, cursor: 'pointer' },
   // ⭕ 下書き保存ボタン用の少し落ち着いたスタイル

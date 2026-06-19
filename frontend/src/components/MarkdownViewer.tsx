@@ -1,6 +1,6 @@
 // 📄 frontend/src/components/MarkdownViewer.tsx
 
-import React from 'react';
+// import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -30,11 +30,14 @@ export default function MarkdownViewer({ content }: MarkdownViewerProps) {
         ]}
 
         components={{
-          code({ node, inline, className, children, ...props }) {
+          code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
             
+            // 「改行を含まない、かつ言語指定（クラス名）がない」ものをインラインコードと判定する
+            const isInline = !match && !String(children).includes('\n');
+
             // 💡 1. 文中のインラインコードはそのまま返す
-            if (inline) {
+            if (isInline) {
               return (
                 <code className={className} {...props}>
                   {children}
@@ -56,7 +59,8 @@ export default function MarkdownViewer({ content }: MarkdownViewerProps) {
                   padding: '16px',
                 }}
                 // ⭕ 言語がない時は props を渡さない（空オブジェクトにする）ことでクラッシュを完全に防ぐ！
-                {...(match ? props : {})} 
+                // {...(match ? props : {})} 
+                {...(match ? (props as any) : {})} 
               >
                 {String(children).replace(/\n$/, '')}
               </SyntaxHighlighter>
