@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router ,  Routes, Route, Link } from 'react-router-dom';
 import Home from './pages/Home';
 import Article from './pages/Article';
 import Login from './pages/Login';
@@ -42,7 +42,7 @@ export default function App() {
   };
 
   return (
-    <Router>
+    <Router  basename={import.meta.env.VITE_APP_BASE || '/'}>
       <div style={styles.wrapper}>
         
         {/* 🌐 常にシンプルさを保つ共通ナビゲーションバー */}
