@@ -37,7 +37,7 @@ export default function App() {
       localStorage.removeItem('username');
       setIsLoggedIn(false);
       setShowMenu(false);
-      window.location.href = '/';
+      window.location.href = import.meta.env.VITE_APP_BASE || '/';
     }
   };
 

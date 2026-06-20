@@ -16,15 +16,24 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const navigate = useNavigate();
   const location = useLocation(); // ⭕ 追加：足跡（state）を読み取るためのフック
 
+  const apiProxy = import.meta.env.VITE_API_PROXY_BASE || '/api'; 
+  const apiBase = import.meta.env.VITE_API_BASE || '/blog'; 
+  const appBase = import.meta.env.VITE_APP_BASE || ''; 
+
+
   // 💡 ログインボタンを押す前に見ていたページ（足跡）を取得。なければトップ（'/'）
   const from = (location.state as any)?.from || '/';
+
+  if (appBase && from.startsWith(appBase)) {
+    from = from.replace(appBase, '') || '/';
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     try {
-      const response = await fetch('/api/blog/auth/login', {
+      const response = await fetch(`${apiProxy}${apiBase}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
