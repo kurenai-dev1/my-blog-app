@@ -4,9 +4,18 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 
+// 📅 日本時間の現在時刻を input[type="datetime-local"] のフォーマット（YYYY-MM-DDTHH:mm）に変換するヘルパー関数
+const getJSTDateTimeString = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  const localISOTime = (new Date(now.getTime() - offset)).toISOString().slice(0, 16);
+  return localISOTime;
+};
+
 export default function WritePost() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [publishedAt, setPublishedAt] = useState(getJSTDateTimeString()); // ⭕ 公開日のStateを追加（初期値は現在時刻）
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   
@@ -14,7 +23,7 @@ export default function WritePost() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // 📝 記事の保存処理（引数で true=即時公開 / false=下書き保存 を切り替える）
+  // 📝 記事の保存処理
   const handleSave = async (isPublishedTarget: boolean) => {
     const token = localStorage.getItem('token');
 
@@ -31,11 +40,12 @@ export default function WritePost() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        // ⭕ title, content に加え、指定された公開ステータスをバックエンドに送る
+        // ⭕ body に published_at を追加してバックエンドに投げる
         body: JSON.stringify({ 
           title, 
           content, 
-          is_published: isPublishedTarget 
+          is_published: isPublishedTarget,
+          published_at: publishedAt ? new Date(publishedAt).toISOString() : null // ISO文字列に変換して送信
         }),
       });
 
@@ -43,11 +53,9 @@ export default function WritePost() {
 
       if (isPublishedTarget) {
         alert('🎉 記事を公開しました！');
-        navigate('/'); // 公開したらトップ（一覧）へ
+        navigate('/');
       } else {
         alert('💾 下書きとして一時保存しました！');
-        // 下書きの場合は一覧に戻るか、そのまま書き続けられるようにダッシュボード等に戻るのが一般的です
-        // ここでは一旦トップ（一覧）に戻るようにしています
         navigate('/'); 
       }
     } catch (error) {
@@ -56,7 +64,7 @@ export default function WritePost() {
     }
   };
 
-  // 🖼️ 画像アップロード処理
+  // 🖼️ 画像アップロード処理 (変更なし)
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -94,7 +102,6 @@ export default function WritePost() {
     }
   };
 
-  // 🎨 編集画面（EditPost）と完全に合わせた「Markdown専用のコンポーネントAPI（ツマミ）」
   const previewMarkdownStyles = {
     '--md-h1-size': '22px',
     '--md-h2-size': '18px',
@@ -119,8 +126,22 @@ export default function WritePost() {
           </div>
         </div>
 
-        {/* 💡 ボタン出し分けのため onSubmit ではなく通常の div に変更 */}
         <div style={styles.form}>
+          {/* 📅 【新規追加】設定ツールバー（公開日指定用） */}
+          {!preview && (
+            <div style={styles.settingsBar}>
+              <label style={styles.dateLabel}>
+                📅 公開日時の指定:
+                <input
+                  type="datetime-local"
+                  value={publishedAt}
+                  onChange={(e) => setPublishedAt(e.target.value)}
+                  style={styles.dateInput}
+                />
+              </label>
+            </div>
+          )}
+
           <input
             type="text"
             placeholder="記事のタイトルを入力..."
@@ -152,7 +173,6 @@ export default function WritePost() {
           ) : (
             <div style={styles.previewArea}>
               {content ? (
-                /* ⭕ クラス名と共に、インラインのCSS変数スコープをEditPostと完全同期！ */
                 <div className="md-viewer" style={previewMarkdownStyles}>
                   <ReactMarkdown>{content}</ReactMarkdown>
                 </div>
@@ -167,18 +187,17 @@ export default function WritePost() {
               下書きを破棄して戻る
             </button>
             
-            {/* ⭕ 下書き保存と本番公開の2つのボタンを配置 */}
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
                 type="button" 
-                onClick={() => handleSave(false)} // 👈 false で下書き保存
+                onClick={() => handleSave(false)} 
                 style={styles.draftButton}
               >
                 下書きとして保存 📁
               </button>
               <button 
                 type="button" 
-                onClick={() => handleSave(true)}  // 👈 true で本番公開
+                onClick={() => handleSave(true)}  
                 style={styles.submitButton}
               >
                 記事を公開する 🚀
@@ -191,6 +210,7 @@ export default function WritePost() {
   );
 }
 
+// 🎨 追加した日付入力用のスタイルを統合
 const styles = {
   wrapper: { backgroundColor: '#fafafa', minHeight: '100vh', width: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#2d3748', paddingTop: '60px' },
   navBar: { position: 'fixed' as const, top: 0, left: 0, right: 0, height: '56px', backgroundColor: '#fff', borderBottom: '1px solid #edf2f7', zIndex: 1000 },
@@ -204,6 +224,12 @@ const styles = {
   tab: { border: 'none', background: 'none', padding: '6px 16px', fontSize: '14px', fontWeight: 600, color: '#4a5568', cursor: 'pointer', borderRadius: '6px', transition: 'all 0.2s' },
   activeTab: { backgroundColor: '#fff', color: '#1a202c', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
   form: { display: 'flex', flexDirection: 'column' as const, gap: '20px' },
+  
+  // 📅 新設した公開日時バーのスタイル
+  settingsBar: { backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', gap: '16px', alignItems: 'center' },
+  dateLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', display: 'flex', alignItems: 'center', gap: '10px' },
+  dateInput: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px', color: '#2d3748', outline: 'none', fontFamily: 'inherit' },
+
   titleInput: { fontSize: '28px', fontWeight: 700, padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', outline: 'none', color: '#1a202c', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
   toolbar: { display: 'flex', alignItems: 'center', gap: '12px', padding: '0 4px' },
   toolButton: { backgroundColor: '#fff', border: '1px solid #cbd5e0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#4a5568', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
@@ -212,7 +238,6 @@ const styles = {
   previewArea: { minHeight: '450px', backgroundColor: '#fff', padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '16px', lineHeight: '1.85', color: '#2d3748', overflowY: 'auto' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', textAlign: 'left' as const },
   actions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' },
   cancelButton: { border: 'none', background: 'none', color: '#e53e3e', fontSize: '14px', fontWeight: 600, cursor: 'pointer' },
-  // ⭕ 下書き保存ボタン用の少し落ち着いたスタイル
   draftButton: { backgroundColor: '#fff', color: '#4a5568', border: '1px solid #cbd5e0', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
   submitButton: { backgroundColor: '#3182ce', color: '#fff', border: 'none', padding: '12px 28px', borderRadius: '8px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(49, 130, 206, 0.3)', transition: 'all 0.2s' }
 };

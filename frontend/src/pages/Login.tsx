@@ -22,7 +22,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
 
   // 💡 ログインボタンを押す前に見ていたページ（足跡）を取得。なければトップ（'/'）
-  const from = (location.state as any)?.from || '/';
+  let from = (location.state as any)?.from || '/';
 
   if (appBase && from.startsWith(appBase)) {
     from = from.replace(appBase, '') || '/';

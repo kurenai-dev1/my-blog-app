@@ -40,39 +40,76 @@ router.get('/posts/:id', async (req, res) => {
 });
 
 // ====================================================================
-// 🔍 記事一覧を取得するAPI (GET /api/blog/posts)
+// 🔍 記事一覧を取得するAPI (GET /api/blog/posts) - 【ページング・ソート大改造】
 // ====================================================================
 router.get('/posts', async (req, res) => {
-  // 💡 フロントから /api/blog/posts?all=true で叩かれたら下書きも含む
   const includeDrafts = req.query.all === 'true'; 
+  
+  // ⭕ フロントから送られてくるページング・ソート用のパラメータを取得（デフォルト値付き）
+  const sort = req.query.sort === 'updated' ? 'updated_at' : 'published_at'; // updated か published
+  const page = parseInt(req.query.page, 10) || 1;   // 現在のページ（初期値: 1）
+  const limit = parseInt(req.query.limit, 10) || 10; // 1ページの件数（初期値: 10）
+  const offset = (page - 1) * limit;                 // スキップする件数
 
   try {
-    let result;
+    let articlesQuery;
+    let countQuery;
+    let queryParams = [];
+
+    // 1. 条件分岐用のSQL組み立て
     if (includeDrafts) {
-      // ⭕ 管理画面用：下書き（false）も公開済み（true）もすべて取得
-      result = await pool.query('SELECT * FROM blog_posts ORDER BY created_at DESC');
+      // 管理画面用：すべて
+      countQuery = 'SELECT COUNT(*) FROM blog_posts';
+      articlesQuery = `SELECT * FROM blog_posts ORDER BY ${sort} DESC LIMIT $1 OFFSET $2`;
+      queryParams = [limit, offset];
     } else {
-      // ⭕ 公開画面用：is_published が true（公開中）のものだけを取得
-      result = await pool.query('SELECT * FROM blog_posts WHERE is_published = true ORDER BY created_at DESC');
+      // 公開画面用：公開済みのみ
+      countQuery = 'SELECT COUNT(*) FROM blog_posts WHERE is_published = true';
+      articlesQuery = `SELECT * FROM blog_posts WHERE is_published = true ORDER BY ${sort} DESC LIMIT $1 OFFSET $2`;
+      queryParams = [limit, offset];
     }
-    res.json(result.rows);
+
+    // 2. 「総件数」と「記事データ」を同時に並列で取得（パフォーマンス向上）
+    const [countResult, articlesResult] = await Promise.all([
+      pool.query(countQuery),
+      pool.query(articlesQuery, queryParams)
+    ]);
+
+    const totalCount = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // 3. フロントがページングしやすいように構造化したJSONを返す
+    res.json({
+      articles: articlesResult.rows,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: page,
+        limit
+      }
+    });
+
   } catch (error) {
-    console.error(error);
+    console.error('記事一覧取得エラー:', error);
     res.status(500).json({ message: 'サーバーエラーが発生しました' });
   }
 });
 
-// 📝 2. 新規記事を投稿するAPI (POST /api/blog/posts)
+// ====================================================================
+// 📝 新規記事を投稿するAPI (POST /api/blog/posts) - 【published_at対応】
+// ====================================================================
 router.post('/posts', verifyToken, async (req, res) => {
-  const { title, content, is_published } = req.body;
+  // ⭕ フロントから任意の公開日（published_at）も受け取れるようにする
+  const { title, content, is_published, published_at } = req.body;
 
   try {
     const query = `
-      INSERT INTO blog_posts (title, content, is_published) 
-      VALUES ($1, $2, $3) 
+      INSERT INTO blog_posts (title, content, is_published, published_at) 
+      VALUES ($1, $2, $3, COALESCE($4, CURRENT_TIMESTAMP)) 
       RETURNING *
     `;
-    const result = await pool.query(query, [title, content, is_published ?? true]);
+    // 💡 published_at が空ならDB側の現在時刻（COALESCE）が入る
+    const result = await pool.query(query, [title, content, is_published ?? true, published_at || null]);
     
     res.status(201).json({
       message: '記事の投稿に成功しました！',
@@ -85,18 +122,18 @@ router.post('/posts', verifyToken, async (req, res) => {
 });
 
 // ====================================================================
-// 🔄 記事を更新するAPI (PUT /api/blog/posts/:id)
+// 🔄 記事を更新するAPI (PUT /api/blog/posts/:id) - 【published_at対応】
 // ====================================================================
 router.put('/posts/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
-  // ⭕ フロントから送られてくる新しい is_published（true or false）を受け取る
-  const { title, content, is_published } = req.body; 
+  // ⭕ 編集画面で修正された「公開日（published_at）」も一緒に受け取る
+  const { title, content, is_published, published_at } = req.body; 
 
   try {
-    // 💾 データベースの UPDATE 文に is_published も追加して上書き
+    // 💾 UPDATE 文に published_at も追加して更新可能に
     const result = await pool.query(
-      'UPDATE blog_posts SET title = $1, content = $2, is_published = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
-      [title, content, is_published ?? true, id]
+      'UPDATE blog_posts SET title = $1, content = $2, is_published = $3, published_at = $4, updated_at = NOW() WHERE id = $5 RETURNING *',
+      [title, content, is_published ?? true, published_at, id]
     );
 
     if (result.rows.length === 0) {

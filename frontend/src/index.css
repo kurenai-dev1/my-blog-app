@@ -16,7 +16,7 @@
   /* :::left-img での表示画像 */
   --md-note-left-img: url("./assets/react.svg");
   /* :::right-img での表示画像 */
-  --md-note-right-img: url("./assets/vite.svg");
+  --md-note-right-img: url("./assets/gemini-color.svg");
 
   /* 📐 テキスト基本設定 */
   font: 18px/145% var(--sans);
