@@ -4,14 +4,21 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import MarkdownViewer from '../components/MarkdownViewer';
 
+// 🏷️ タグオブジェクトの型定義、または単純な文字列
+interface Tag {
+  id?: number;
+  name: string;
+}
+
 interface Post {
   id: number;
   title: string;
   content: string;
   created_at: string;
-  published_at: string; // ⭕ 追加
-  updated_at: string;   // ⭕ 追加
+  published_at: string; 
+  updated_at: string;   
   likes: number;
+  tags?: (string | Tag)[]; // ⭕ 記事データに含まれるタグ配列の型を追加
 }
 
 export default function Article() {
@@ -77,11 +84,20 @@ export default function Article() {
   // 💡 記事が「更新されたか（公開日よりあとに更新があるか）」を判定するヘルパー
   const isUpdated = () => {
     if (!post.updated_at || !post.published_at) return false;
-    // ミリ秒単位の微小なズレを許容するため、10秒（10000ms）以上の差がある場合のみ「更新あり」とみなす
     const pubTime = new Date(post.published_at).getTime();
     const updTime = new Date(post.updated_at).getTime();
     return updTime - pubTime > 10000;
   };
+
+  // 🏷️ タグデータを安全に文字列配列に統一するヘルパー関数
+  const getTagNames = (): string[] => {
+    if (!post.tags || !Array.isArray(post.tags)) return [];
+    return post.tags.map(tag => 
+      typeof tag === 'object' && tag !== null ? tag.name : String(tag)
+    );
+  };
+
+  const tagNames = getTagNames();
 
   return (
     <div style={styles.wrapper}>
@@ -100,7 +116,7 @@ export default function Article() {
         {/* 📄 記事メインカード */}
         <article style={styles.articleCard}>
           <header style={styles.articleHeader}>
-            {/* 📅 メタ情報エリアを拡張 */}
+            {/* 📅 メタ情報エリア */}
             <div style={styles.cardMeta}>
               <span>📅 公開: {new Date(post.published_at || post.created_at).toLocaleDateString('ja-JP')}</span>
               {isUpdated() && (
@@ -109,7 +125,19 @@ export default function Article() {
                 </span>
               )}
             </div>
+
             <h1 style={styles.articleTitle}>{post.title}</h1>
+
+            {/* 🏷️ 【新規追加】記事に紐づくタグ一覧を表示 */}
+            {tagNames.length > 0 && (
+              <div style={styles.tagContainer}>
+                {tagNames.map((tagName, index) => (
+                  <span key={index} style={styles.tagBadge}>
+                    #{tagName}
+                  </span>
+                ))}
+              </div>
+            )}
           </header>
           
           {/* Markdown本文 */}
@@ -154,7 +182,7 @@ export default function Article() {
   );
 }
 
-// 🎨 スタイルに更新バッジ用スタイルをちょい足し
+// 🎨 スタイル設定
 const styles = {
   wrapper: { backgroundColor: '#f5f6f7', minHeight: '100vh', width: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#2d3748' },
   mainContainer: { maxWidth: '820px', margin: '0 auto', padding: '20px 20px 100px 20px' },
@@ -165,11 +193,15 @@ const styles = {
   articleCard: { backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e6ebed', padding: '48px 40px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' },
   articleHeader: { marginBottom: '40px', borderBottom: '1px solid #edf2f7', paddingBottom: '24px' },
   
-  // 📅 メタ情報の配置調整
-  cardMeta: { fontSize: '13px', color: '#718096', marginBottom: '12px', display: 'flex', gap: '14px', alignItems: 'center' },
+  cardMeta: { fontSize: '13px', color: '#718096', marginBottom: '16px', display: 'flex', gap: '14px', alignItems: 'center' },
   updateBadge: { color: '#4a5568', backgroundColor: '#edf2f7', padding: '2px 6px', borderRadius: '4px', fontWeight: 500 },
   
-  articleTitle: { fontSize: '28px', fontWeight: 700, color: '#1a202c', lineHeight: 1.4, margin: '0' },
+  articleTitle: { fontSize: '28px', fontWeight: 700, color: '#1a202c', lineHeight: 1.4, margin: '0 0 16px 0' },
+  
+  // 🏷️ 記事詳細用のタグ表示スタイル
+  tagContainer: { display: 'flex', flexWrap: 'wrap' as const, gap: '8px', marginTop: '12px' },
+  tagBadge: { backgroundColor: '#edf2f7', color: '#4a5568', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 },
+
   articleContent: { fontSize: '16px', lineHeight: '1.8', wordBreak: 'break-word' as const },
   footerNav: { marginTop: '40px', textAlign: 'center' as const },
   footerText: { fontSize: '14px', color: '#a0aec0' },

@@ -17,16 +17,20 @@ export default function EditPost() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPublished, setIsPublished] = useState(true); 
-  const [publishedAt, setPublishedAt] = useState(''); // ⭕ 公開日時のStateを追加
+  const [publishedAt, setPublishedAt] = useState('');
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   
+  // 🏷️ タグ管理用の State を追加
+  const [tags, setTags] = useState<string[]>([]); // 確定したタグ名の配列
+  const [tagInput, setTagInput] = useState('');   // 入力中の文字面
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // 🔄 画面を開いた瞬間に記事データを取得
+  // 🔄 画面を開いた瞬間に記事データ（および関連タグ）を取得
   useEffect(() => {
     const fetchPost = async () => {
       try {
@@ -37,8 +41,15 @@ export default function EditPost() {
         setTitle(data.title);
         setContent(data.content);
         setIsPublished(data.is_published ?? true); 
-        // ⭕ DBから届いた公開日を、input用にフォーマット変換してセット（値がなければcreated_at等でフォールバック）
         setPublishedAt(formatISOToDateTimeString(data.published_at || data.created_at));
+
+        // 🏷️ バックエンドからタグデータ（配列）が届く想定で State にセット
+        // 例: data.tags = ['React', 'Node.js'] またはオブジェクト配列ならマッピングが必要
+        if (data.tags && Array.isArray(data.tags)) {
+          // 届いた中身がオブジェクト（{ name: 'xxx' }）なら .name を取り出し、文字列ならそのまま使う
+          const formattedTags = data.tags.map((t:any) => (typeof t === 'object' && t !== null ? t.name : t));
+          setTags(formattedTags);
+        }
       } catch (error) {
         console.error(error);
         alert('記事の読み込みに失敗しました。');
@@ -50,9 +61,45 @@ export default function EditPost() {
     fetchPost();
   }, [id, navigate]);
 
+  // 🏷️ タグ入力欄でキーボードが叩かれたときの処理
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault(); // フォーム送信や意図しない挙動をガード
+      
+      const trimmed = tagInput.trim().replace(/,/g, '');
+      
+      if (trimmed && !tags.includes(trimmed)) {
+        if (tags.length >= 5) {
+          alert('タグは最大5つまで登録できます。');
+          return;
+        }
+        setTags([...tags, trimmed]);
+      }
+      setTagInput('');
+    } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
+      setTags(tags.slice(0, -1)); // 未入力時のBackspaceで最後のタグを消去
+    }
+  };
+
+  // 🏷️ タグの [×] ボタンを押したときの削除処理
+  const removeTag = (indexToRemove: number) => {
+    setTags(tags.filter((_, index) => index !== indexToRemove));
+  };
+
   // 🔄 記事の更新リクエスト処理
   const handleUpdate = async (targetPublishStatus: boolean) => {
     const token = localStorage.getItem('token');
+
+    // 💡 【自動救済ロジック】送信時に入力欄にEnterを押し忘れた文字があれば配列に回収する
+    let finalTags = [...tags];
+    const trimmedInput = tagInput.trim().replace(/,/g, '');
+    if (trimmedInput && !finalTags.includes(trimmedInput)) {
+      if (finalTags.length < 5) {
+        finalTags.push(trimmedInput);
+        setTags(finalTags); // 念のためStateも同期
+        setTagInput('');
+      }
+    }
 
     try {
       const response = await fetch(`/api/blog/posts/${id}`, {
@@ -61,12 +108,13 @@ export default function EditPost() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        // ⭕ body に published_at を追加してバックエンドに投げる
+        // ⭕ body に最新化された finalTags を追加してバックエンドに投げる
         body: JSON.stringify({ 
           title, 
           content, 
           is_published: targetPublishStatus,
-          published_at: publishedAt ? new Date(publishedAt).toISOString() : null // ISO文字列に変換して送信
+          published_at: publishedAt ? new Date(publishedAt).toISOString() : null,
+          tags: finalTags // ⭕ 新規登録と同様、Stateではなく直前の確定配列を送る
         }),
       });
 
@@ -139,7 +187,7 @@ export default function EditPost() {
         </div>
 
         <div style={styles.form}>
-          {/* 📅 【新規追加】設定ツールバー（公開日修正用） */}
+          {/* 📅 設定ツールバー（公開日修正 ＆ 🏷️タグ修正を並列で配置） */}
           {!preview && (
             <div style={styles.settingsBar}>
               <label style={styles.dateLabel}>
@@ -151,6 +199,30 @@ export default function EditPost() {
                   style={styles.dateInput}
                 />
               </label>
+
+              {/* 垂直セパレーター線 */}
+              <div style={styles.separator} />
+
+              {/* 🏷️ タグ編集UIセクション */}
+              <div style={styles.tagSection}>
+                <span style={styles.tagSectionLabel}>🏷️ タグ:</span>
+                <div style={styles.tagInputWrapper}>
+                  {tags.map((tag, index) => (
+                    <span key={index} style={styles.tagBadge}>
+                      #{tag}
+                      <button type="button" onClick={() => removeTag(index)} style={styles.tagDeleteButton}>×</button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    placeholder={tags.length === 0 ? "タグを入力してEnter..." : "追加..."}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    style={styles.tagInputField}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -169,6 +241,14 @@ export default function EditPost() {
             <textarea ref={textareaRef} value={content} onChange={(e) => setContent(e.target.value)} required style={styles.textarea} placeholder="Markdownで記事を執筆..." />
           ) : (
             <div style={styles.previewArea}>
+              {/* 👁️ プレビュー確認時用のタグ表示ライン */}
+              {tags.length > 0 && (
+                <div style={styles.previewTagLine}>
+                  {tags.map((tag, index) => (
+                    <span key={index} style={styles.previewTagBadge}>#{tag}</span>
+                  ))}
+                </div>
+              )}
               <div className="md-viewer" style={previewMarkdownStyles}>
                 <MarkdownViewer content={content}/>
               </div>
@@ -201,19 +281,21 @@ export default function EditPost() {
   );
 }
 
-// 🎨 追加した日時入力用のスタイルを統合
+// 🎨 スタイル定義（WritePostの横並び設定を完全コピーして統合）
 const styles = {
-  wrapper: { backgroundColor: '#fafafa', minHeight: '100vh', width: '100%' },
+  wrapper: { backgroundColor: '#fafafa', minHeight: '100vh', width: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#2d3748', paddingTop: '40px' },
   container: { maxWidth: '860px', margin: '0 auto', padding: '40px 20px' },
+  
   editorHeader: {
-    // --- ここから追加・修正 ---
-    position: 'sticky',      // ⭕ スクロールしても画面にくっつく
-    top: '56px',             // ⭕ ナビゲーションバー(56px)のすぐ下に固定
-    zIndex: 10,              // ⭕ 本文より上に表示されるようにする
-    backgroundColor: '#fafafa', // ⭕ 背景を wrapper と同じ色にして、後ろの文字が透けないようにする
-    padding: '10px 0',       // ⭕ 固定された時に少し余白を持たせる
-    // --- ここまで ---
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' 
+    position: 'sticky' as const,     
+    top: '56px',              
+    zIndex: 10,              
+    backgroundColor: '#fafafa', 
+    padding: '10px 0',       
+    display: 'flex' as const, 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: '24px' 
   },
   pageTitle: { fontSize: '24px', fontWeight: 800, color: '#1a202c', margin: 0 },
   draftBadge: { backgroundColor: '#feebc8', color: '#c05621', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 700 },
@@ -222,10 +304,23 @@ const styles = {
   activeTab: { backgroundColor: '#fff', color: '#1a202c', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
   form: { display: 'flex', flexDirection: 'column' as const, gap: '20px' },
 
-  // 📅 新設した公開日時バーのスタイル（WritePostと統一）
-  settingsBar: { backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', gap: '16px', alignItems: 'center' },
-  dateLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', display: 'flex', alignItems: 'center', gap: '10px' },
-  dateInput: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px', color: '#2d3748', outline: 'none', fontFamily: 'inherit' },
+  // 📅 横並び設定バー
+  settingsBar: { backgroundColor: '#fff', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' as const },
+  dateLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', display: 'flex', alignItems: 'center', gap: '8px', shrink: 0 },
+  dateInput: { padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px', color: '#2d3748', outline: 'none', fontFamily: 'inherit' },
+  separator: { width: '1px', height: '24px', backgroundColor: '#e2e8f0' },
+
+  // 🏷️ タグ編集UIスタイル
+  tagSection: { display: 'flex', alignItems: 'center', gap: '8px', flexGrow: 1, minWidth: '280px' },
+  tagSectionLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', shrink: 0 },
+  tagInputWrapper: { display: 'flex', flexWrap: 'wrap' as const, gap: '6px', alignItems: 'center', border: '1px solid #cbd5e0', borderRadius: '6px', padding: '4px 8px', flexGrow: 1, backgroundColor: '#fafafa' },
+  tagInputField: { border: 'none', outline: 'none', background: 'transparent', fontSize: '14px', padding: '4px 0', minWidth: '100px', flexGrow: 1 },
+  tagBadge: { display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#edf2f7', color: '#4a5568', padding: '2px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: 500 },
+  tagDeleteButton: { border: 'none', background: 'transparent', cursor: 'pointer', color: '#a0aec0', fontSize: '14px', padding: '0 0 0 2px', display: 'flex', alignItems: 'center' },
+
+  // 👁️ プレビュー用タグ表示
+  previewTagLine: { display: 'flex', gap: '8px', marginBottom: '16px', borderBottom: '1px solid #edf2f7', paddingBottom: '12px' },
+  previewTagBadge: { backgroundColor: '#e2e8f0', color: '#4a5568', padding: '3px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 },
 
   titleInput: { fontSize: '28px', fontWeight: 700, padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', outline: 'none', color: '#1a202c' },
   toolbar: { display: 'flex', alignItems: 'center', gap: '12px' },

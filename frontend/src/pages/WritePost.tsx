@@ -15,17 +15,59 @@ const getJSTDateTimeString = () => {
 export default function WritePost() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [publishedAt, setPublishedAt] = useState(getJSTDateTimeString()); // ⭕ 公開日のStateを追加（初期値は現在時刻）
+  const [publishedAt, setPublishedAt] = useState(getJSTDateTimeString());
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   
+  // 🏷️ タグ管理用の State を追加
+  const [tags, setTags] = useState<string[]>([]); // 確定したタグ名の配列
+  const [tagInput, setTagInput] = useState('');   // 入力中の文字面
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // 📝 記事の保存処理
+  // 🏷️ タグ入力欄でキーボードが叩かれたときの処理
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enterキー または カンマ が押されたら確定
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault(); // フォームが勝手に送信されるのをガード
+      
+      const trimmed = tagInput.trim().replace(/,/g, ''); // 空白とカンマの除去
+      
+      if (trimmed && !tags.includes(trimmed)) {
+        if (tags.length >= 5) {
+          alert('タグは最大5つまで登録できます。');
+          return;
+        }
+        setTags([...tags, trimmed]);
+      }
+      setTagInput(''); // 入力欄をまっさらに
+    } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
+      // 文字が空の状態でBackSpaceを押したら、最後のタグを1くくりで消す親切設計
+      setTags(tags.slice(0, -1));
+    }
+  };
+
+  // 🏷️ タグの [×] ボタンを押したときの削除処理
+  const removeTag = (indexToRemove: number) => {
+    setTags(tags.filter((_, index) => index !== indexToRemove));
+  };
+
+  // 📝 記事の保存処理（タグを乗せて送信）
   const handleSave = async (isPublishedTarget: boolean) => {
     const token = localStorage.getItem('token');
+
+    // 👇 【ここを追加】送信時に、入力欄にEnter押していない文字が残っていたら強制的に配列に入れる救済処置
+    let finalTags = [...tags];
+    const trimmedInput = tagInput.trim().replace(/,/g, '');
+    if (trimmedInput && !finalTags.includes(trimmedInput)) {
+      if (finalTags.length < 5) {
+        finalTags.push(trimmedInput);
+        setTags(finalTags); // 画面の表示も更新
+        setTagInput('');    // 入力欄をクリア
+      }
+    }
 
     if (!token) {
       alert('ログインセッションが切れています。もう一度ログインしてください。');
@@ -40,12 +82,12 @@ export default function WritePost() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        // ⭕ body に published_at を追加してバックエンドに投げる
         body: JSON.stringify({ 
           title, 
           content, 
           is_published: isPublishedTarget,
-          published_at: publishedAt ? new Date(publishedAt).toISOString() : null // ISO文字列に変換して送信
+          published_at: publishedAt ? new Date(publishedAt).toISOString() : null,
+          tags: finalTags // ⭕ 確定したタグの配列（['React', 'Go']など）をバックエンドへ引き渡す
         }),
       });
 
@@ -97,6 +139,7 @@ export default function WritePost() {
       console.error(error);
       alert('画像のアップロード中にエラーが発生しました。');
     } finally {
+      uploading;
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -127,11 +170,11 @@ export default function WritePost() {
         </div>
 
         <div style={styles.form}>
-          {/* 📅 【新規追加】設定ツールバー（公開日指定用） */}
+          {/* 📅 設定ツールバー（公開日指定 ＆ 🏷️タグ入力を横並びに同居させる） */}
           {!preview && (
             <div style={styles.settingsBar}>
               <label style={styles.dateLabel}>
-                📅 公開日時の指定:
+                📅 公開日時:
                 <input
                   type="datetime-local"
                   value={publishedAt}
@@ -139,6 +182,30 @@ export default function WritePost() {
                   style={styles.dateInput}
                 />
               </label>
+
+              {/* 垂直セパレーター線 */}
+              <div style={styles.separator} />
+
+              {/* 🏷️ タグ入力UIセクション */}
+              <div style={styles.tagSection}>
+                <span style={styles.tagSectionLabel}>🏷️ タグ:</span>
+                <div style={styles.tagInputWrapper}>
+                  {tags.map((tag, index) => (
+                    <span key={index} style={styles.tagBadge}>
+                      #{tag}
+                      <button type="button" onClick={() => removeTag(index)} style={styles.tagDeleteButton}>×</button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    placeholder={tags.length === 0 ? "タグを入力してEnter..." : "追加..."}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    style={styles.tagInputField}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -172,6 +239,15 @@ export default function WritePost() {
             />
           ) : (
             <div style={styles.previewArea}>
+              {/* 👁️ プレビュー時にも設定されたタグを確認できるように最上部に配置 */}
+              {tags.length > 0 && (
+                <div style={styles.previewTagLine}>
+                  {tags.map((tag, index) => (
+                    <span key={index} style={styles.previewTagBadge}>#{tag}</span>
+                  ))}
+                </div>
+              )}
+              
               {content ? (
                 <div className="md-viewer" style={previewMarkdownStyles}>
                   <ReactMarkdown>{content}</ReactMarkdown>
@@ -210,7 +286,7 @@ export default function WritePost() {
   );
 }
 
-// 🎨 追加した日付入力用のスタイルを統合
+// 🎨 スタイル定義（Sticky の型エラー対策 as const 適用 ＆ タグスタイルを美しく追加）
 const styles = {
   wrapper: { backgroundColor: '#fafafa', minHeight: '100vh', width: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#2d3748', paddingTop: '60px' },
   navBar: { position: 'fixed' as const, top: 0, left: 0, right: 0, height: '56px', backgroundColor: '#fff', borderBottom: '1px solid #edf2f7', zIndex: 1000 },
@@ -218,17 +294,41 @@ const styles = {
   navLogo: { textDecoration: 'none', fontWeight: 700, color: '#1a202c', fontSize: '16px' },
   loginLink: { textDecoration: 'none', fontSize: '13px', fontWeight: 500, color: '#718096' },
   container: { maxWidth: '860px', margin: '0 auto', padding: '40px 20px' },
-  editorHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap' as const, gap: '16px' },
+  
+  editorHeader: {
+    position: 'sticky' as const, // ⭕ TSエラー回避のために as const を追加
+    top: '56px',              
+    zIndex: 10,              
+    backgroundColor: '#fafafa', 
+    padding: '10px 0',       
+    display: 'flex' as const,    // ⭕ as const を追加
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: '24px' 
+  },
   pageTitle: { fontSize: '24px', fontWeight: 800, color: '#1a202c', margin: 0 },
   tabContainer: { display: 'flex', backgroundColor: '#edf2f7', padding: '4px', borderRadius: '8px' },
   tab: { border: 'none', background: 'none', padding: '6px 16px', fontSize: '14px', fontWeight: 600, color: '#4a5568', cursor: 'pointer', borderRadius: '6px', transition: 'all 0.2s' },
   activeTab: { backgroundColor: '#fff', color: '#1a202c', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
   form: { display: 'flex', flexDirection: 'column' as const, gap: '20px' },
   
-  // 📅 新設した公開日時バーのスタイル
-  settingsBar: { backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', gap: '16px', alignItems: 'center' },
-  dateLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', display: 'flex', alignItems: 'center', gap: '10px' },
-  dateInput: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px', color: '#2d3748', outline: 'none', fontFamily: 'inherit' },
+  // 📅 設定バー（タグ入力をフレックスコンテナで綺麗に並列化）
+  settingsBar: { backgroundColor: '#fff', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' as const },
+  dateLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', display: 'flex', alignItems: 'center', gap: '8px', shrink: 0 },
+  dateInput: { padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px', color: '#2d3748', outline: 'none', fontFamily: 'inherit' },
+  separator: { width: '1px', height: '24px', backgroundColor: '#e2e8f0' },
+  
+  // 🏷️ タグフォームの専用スタイル群
+  tagSection: { display: 'flex', alignItems: 'center', gap: '8px', flexGrow: 1, minWidth: '280px' },
+  tagSectionLabel: { fontSize: '14px', fontWeight: 600, color: '#4a5568', shrink: 0 },
+  tagInputWrapper: { display: 'flex', flexWrap: 'wrap' as const, gap: '6px', alignItems: 'center', border: '1px solid #cbd5e0', borderRadius: '6px', padding: '4px 8px', flexGrow: 1, backgroundColor: '#fafafa' },
+  tagInputField: { border: 'none', outline: 'none', background: 'transparent', fontSize: '14px', padding: '4px 0', minWidth: '100px', flexGrow: 1 },
+  tagBadge: { display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#edf2f7', color: '#4a5568', padding: '2px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: 500 },
+  tagDeleteButton: { border: 'none', background: 'transparent', cursor: 'pointer', color: '#a0aec0', fontSize: '14px', padding: '0 0 0 2px', display: 'flex', alignItems: 'center' },
+  
+  // 👁️ プレビュー用タグ表示
+  previewTagLine: { display: 'flex', gap: '8px', marginBottom: '16px', borderBottom: '1px solid #edf2f7', paddingBottom: '12px' },
+  previewTagBadge: { backgroundColor: '#e2e8f0', color: '#4a5568', padding: '3px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 },
 
   titleInput: { fontSize: '28px', fontWeight: 700, padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', outline: 'none', color: '#1a202c', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
   toolbar: { display: 'flex', alignItems: 'center', gap: '12px', padding: '0 4px' },
