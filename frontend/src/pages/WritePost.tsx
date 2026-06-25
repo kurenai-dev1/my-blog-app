@@ -2,7 +2,8 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+// import ReactMarkdown from 'react-markdown';
+import MarkdownViewer from '../components/MarkdownViewer';
 
 // 📅 日本時間の現在時刻を input[type="datetime-local"] のフォーマット（YYYY-MM-DDTHH:mm）に変換するヘルパー関数
 const getJSTDateTimeString = () => {
@@ -139,9 +140,11 @@ export default function WritePost() {
       console.error(error);
       alert('画像のアップロード中にエラーが発生しました。');
     } finally {
-      uploading;
+      // 浮いていた uploading; を綺麗に削除
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -250,7 +253,7 @@ export default function WritePost() {
               
               {content ? (
                 <div className="md-viewer" style={previewMarkdownStyles}>
-                  <ReactMarkdown>{content}</ReactMarkdown>
+                  <MarkdownViewer content={content}/>
                 </div>
               ) : (
                 <p style={{ color: '#a0aec0', textAlign: 'center', marginTop: '40px' }}>本文が空っぽです。エディタに戻って書いてみましょう！</p>

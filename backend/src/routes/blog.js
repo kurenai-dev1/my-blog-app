@@ -6,11 +6,14 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 import multer from 'multer';
 import path from 'path';
 
+const proxyBase = process.env.UPLOAD_PROXY_BASE || '/'; // 例: '/api'
+const uploadDir = process.env.UPLOAD_BLOG_DIR || 'uploads'; // uploads
+
 const router = express.Router();
 
-// 💾 Multerの設定（変更なしのため中略）
+// 💾 Multerの設定
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => { cb(null, 'uploads/'); },
+  destination: (req, file, cb) => { cb(null, `${uploadDir}/`); },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
@@ -327,8 +330,52 @@ router.put('/posts/:id', verifyToken, async (req, res) => {
   }
 });
 
-// ⚡ 画像アップロード用API ＆ ❤️ いいねAPI (変更なしのため省略)
-router.post('/upload', upload.single('image'), (req, res) => { /* ... */ });
-router.post('/posts/:id/like', async (req, res) => { /* ... */ });
+
+// 画像アップロード用API (POST /api/blog/upload)
+// 本来はここもログイン必須（verifyToken）にするべきですが、まずは通信テストのためガードなしで作ります
+router.post('/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: '画像ファイルが添付されていません' });
+    }
+
+    // フロントエンドがアクセスするためのURLを組み立てる
+    // 例: http://localhost:3001/uploads/image-123456789.jpg
+    // const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const protocol = process.env.HOST_PROTOCOL || req.protocol; // https
+    const host = req.get('host');
+    const urlPath = path.posix.join(proxyBase, uploadDir, req.file.filename);
+    const imageUrl = `${protocol}://${host}${urlPath}`;
+
+    // フロント側に「アップロード大成功！URLはこれだよ」と返す
+    res.json({ url: imageUrl });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '画像のアップロード中にエラーが発生しました' });
+  }
+});
+
+// ❤️ 記事にいいねをプラス1するAPI (POST /api/blog/posts/:id/like)
+router.post('/posts/:id/like', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 💾 SQLで直接 +1 して、更新後のデータを返す（競合を防ぐため安全）
+    const result = await pool.query(
+      'UPDATE blog_posts SET likes = likes + 1 WHERE id = $1 RETURNING likes',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: '記事が見つかりません' });
+    }
+
+    // 最新のいいね数をフロントに返す
+    res.json({ likes: result.rows[0].likes });
+  } catch (error) {
+    console.error('いいねエラー:', error);
+    res.status(500).json({ message: 'サーバーエラーが発生しました' });
+  }
+});
 
 export default router;

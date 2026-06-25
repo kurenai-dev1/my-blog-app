@@ -36,7 +36,12 @@ export default function Home() {
   
   // 🏷️ 選択中の絞り込みタグの状態管理を追加
   // const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedTag, setSelectedTag] = useState<string | null>('はじめに');
+  const [selectedTag, setSelectedTag] = useState<string | null>(() => {
+    const savedTag = sessionStorage.getItem('selected_blog_tag');
+    // 明示的に解除された（'none' が入っている）場合は null、記憶がなければ 'はじめに'
+    if (savedTag === 'none') return null;
+    return savedTag || 'はじめに';
+  });
 
   const isAdmin = !!localStorage.getItem('token'); 
 
@@ -71,9 +76,10 @@ export default function Home() {
 
   // 🏷️ タグがクリックされたときの処理
   const handleTagClick = (tagName: string, e: React.MouseEvent) => {
-    e.preventDefault(); // 親要素のカードリンク（詳細画面への遷移）をガード
+    e.preventDefault(); 
     setSelectedTag(tagName);
-    setPage(1); // 絞り込み時は1ページ目に戻す
+    sessionStorage.setItem('selected_blog_tag', tagName); // ⭕ 選択したタグを記憶
+    setPage(1); 
   };
 
   // 🏷️ タグデータを安全に文字列配列に統一するヘルパー
@@ -82,6 +88,13 @@ export default function Home() {
     return postTags.map(tag => 
       typeof tag === 'object' && tag !== null ? tag.name : String(tag)
     );
+  };
+
+  // 🏷️ 【新規追加】絞り込みを解除するときの処理
+  const handleClearFilter = () => {
+    setSelectedTag(null);
+    sessionStorage.setItem('selected_blog_tag', 'none'); // ⭕ 解除された状態（none）を記憶
+    setPage(1);
   };
 
   return (
@@ -109,7 +122,7 @@ export default function Home() {
           {selectedTag ? (
             <div style={styles.filterStatus}>
               <span style={styles.filterText}>🏷️ 絞り込み中: <strong>#{selectedTag}</strong></span>
-              <button onClick={() => { setSelectedTag(null); setPage(1); }} style={styles.clearFilterButton}>
+              <button onClick={handleClearFilter} style={styles.clearFilterButton}>
                 解除 ×
               </button>
             </div>
