@@ -6,6 +6,7 @@ import { visit } from 'unist-util-visit';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import remarkDirective from 'remark-directive'; 
+import remarkBreaks from 'remark-breaks';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -50,7 +51,7 @@ export default function MarkdownViewer({ content }: MarkdownViewerProps) {
       <ReactMarkdown
         //  1. HTMLを解析できるようにするプラグインを通す
         // remarkPlugins={[remarkGfm]}
-        remarkPlugins={[remarkGfm, remarkDirective, myDirectivePlugin]}
+        remarkPlugins={[remarkGfm, remarkDirective, myDirectivePlugin, remarkBreaks]}
         rehypePlugins={[rehypeRaw]}
         
         //  2. 許可するHTMLタグをホワイトリスト形式で指定

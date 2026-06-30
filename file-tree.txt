@@ -1,0 +1,58 @@
+.
+„¥„Ÿ [backend]
+„     „¥„Ÿ [src]
+„     „     „¥„Ÿ [config]
+„     „     „     „¥„Ÿ db.js
+„     „     „     „¤„Ÿ init_postgresql.sql
+„     „     „¥„Ÿ [middleware]
+„     „     „     „¤„Ÿ authMiddleware.js
+„     „     „¥„Ÿ [routes]
+„     „     „     „¥„Ÿ auth.js
+„     „     „     „¤„Ÿ blog.js
+„     „     „¤„Ÿ server.js
+„     „¥„Ÿ .env
+„     „¥„Ÿ .env.sample
+„     „¥„Ÿ package-lock.json
+„     „¤„Ÿ package.json
+„¥„Ÿ [frontend]
+„     „¥„Ÿ [public]
+„     „     „¥„Ÿ favicon.svg
+„     „     „¤„Ÿ icons.svg
+„     „¥„Ÿ [src]
+„     „     „¥„Ÿ [assets]
+„     „     „     „¥„Ÿ gemini-color.svg
+„     „     „     „¥„Ÿ hero.png
+„     „     „     „¥„Ÿ react.svg
+„     „     „     „¤„Ÿ vite.svg
+„     „     „¥„Ÿ [components]
+„     „     „     „¤„Ÿ MarkdownViewer.tsx
+„     „     „¥„Ÿ [pages]
+„     „     „     „¥„Ÿ Article.tsx
+„     „     „     „¥„Ÿ EditPost.tsx
+„     „     „     „¥„Ÿ Home.tsx
+„     „     „     „¥„Ÿ Login.tsx
+„     „     „     „¤„Ÿ WritePost.tsx
+„     „     „¥„Ÿ App.css
+„     „     „¥„Ÿ App.tsx
+„     „     „¥„Ÿ index.css
+„     „     „¤„Ÿ main.tsx
+„     „¥„Ÿ .env
+„     „¥„Ÿ .env.development
+„     „¥„Ÿ .env.production
+„     „¥„Ÿ .gitignore
+„     „¥„Ÿ eslint.config.js
+„     „¥„Ÿ index.html
+„     „¥„Ÿ package-lock.json
+„     „¥„Ÿ package.json
+„     „¥„Ÿ README.md
+„     „¥„Ÿ tsconfig.app.json
+„     „¥„Ÿ tsconfig.json
+„     „¥„Ÿ tsconfig.node.json
+„     „¤„Ÿ vite.config.ts
+„¥„Ÿ .gitignore
+„¥„Ÿ CLAUDE.md
+„¥„Ÿ file-tree
+„¥„Ÿ file-tree.txt
+„¥„Ÿ LICENSE
+„¥„Ÿ package-lock.json
+„¤„Ÿ README.md

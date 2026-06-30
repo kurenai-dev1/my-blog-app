@@ -6,6 +6,24 @@ import Login from './pages/Login';
 import WritePost from './pages/WritePost';
 import EditPost from './pages/EditPost';
 
+// ➕ JWTトークンから有効期限（exp）をチェックするヘルパー関数
+const isTokenExpired = (token: string): boolean => {
+  try {
+    // JWTの真ん中の部分（ペイロード）を取り出す
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    // デコードしてJSONオブジェクトにする
+    const payload = JSON.parse(window.atob(base64));
+    
+    if (!payload.exp) return false; // expがなければ期限なしとみなす
+
+    const currentTime = Math.floor(Date.now() / 1000); // 現在のUnixタイム（秒）
+    return payload.exp < currentTime; // 期限が現在時刻より過去なら true（期限切れ）
+  } catch (error) {
+    return true; // 解析エラーが起きたトークンは不正・期限切れとみなす
+  }
+};
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showMenu, setShowMenu] = useState(false); // ☰ メニューの開閉状態
@@ -15,7 +33,15 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      setIsLoggedIn(true);
+      if (isTokenExpired(token)) {
+        // 🚨 期限が切れていたら自動ログアウト
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        setIsLoggedIn(false);
+        console.log('認証トークンの期限が切れたため、自動ログアウトしました。');
+      } else {
+        setIsLoggedIn(true);
+      }
     }
   }, []);
 
